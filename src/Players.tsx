@@ -1,6 +1,7 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { useEffect, useRef, useState } from "react";
+import { io, Socket } from "socket.io-client";
+import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 interface IPlayer {
   id: number;
@@ -11,6 +12,7 @@ interface IPlayer {
 export default function Players(): JSX.Element {
   const [players, setPlayers] = useState<IPlayer[]>([]);
   const [newPlayer, setNewPlayer] = useState<string>("");
+  const socket = useRef<Socket<DefaultEventsMap, DefaultEventsMap>>();
 
   const handleAddPlayer = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,9 +41,9 @@ export default function Players(): JSX.Element {
   useEffect(() => {
     console.log("Trying to set up socket.io");
 
-    const socket = io("https://c3-party-be.rajwinderbhatoe.repl.co");
+    socket.current = io("https://c3-party-be.rajwinderbhatoe.repl.co");
 
-    socket.on("players", (receivedPlayers: IPlayer[]) => {
+    socket.current.on("players", (receivedPlayers: IPlayer[]) => {
       console.log("socketio got: Players");
       setPlayers(receivedPlayers);
     });
@@ -49,11 +51,23 @@ export default function Players(): JSX.Element {
     console.log("socket registered listeners");
 
     function desubscribe() {
-      console.log("closing socket.io socket");
-      socket.disconnect();
+      if (socket.current) {
+        console.log("closing socket.io socket");
+        socket.current.disconnect();
+      }
     }
     return desubscribe;
   }, []);
+
+  const joinRoomMessage = () => {
+    console.log("room 1 joined");
+  };
+
+  const handleJoinRoom = () => {
+    if (socket.current) {
+      socket.current.emit("create", 1, joinRoomMessage);
+    }
+  };
 
   return (
     <>
@@ -70,6 +84,9 @@ export default function Players(): JSX.Element {
         />
         <button type="submit">Add</button>
       </form>
+      <button type="button" onClick={handleJoinRoom}>
+        Join Room 1
+      </button>
     </>
   );
 }
